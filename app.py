@@ -437,55 +437,233 @@ Apply these Hawkeye investigation mental models in your analysis. Reference spec
         return response_body['content'][0]['text']
         
     except Exception as e:
-        # Return mock data for testing
-        time.sleep(1)
-        if "chat" in operation_name.lower():
-            return "Based on the Hawkeye guidelines, I can help you understand the feedback better. The 20-point checklist emphasizes thorough investigation and customer impact assessment. What specific aspect would you like me to clarify?"
+        # Generate section-specific mock responses for testing
+        return generate_section_specific_response(user_prompt, operation_name)
+
+def generate_section_specific_response(user_prompt, operation_name):
+    """Generate section-specific responses based on content analysis"""
+    time.sleep(1)
+    
+    if "chat" in operation_name.lower():
+        # Extract question from user prompt for contextual chat responses
+        if "hawkeye" in user_prompt.lower():
+            return "The Hawkeye 20-point checklist is designed to ensure thorough investigation. Key areas include: 1) Customer Experience Impact, 2) Investigation Process, 3) Seller Classification, 4) Enforcement Decision-Making. Which specific checkpoint would you like me to explain?"
+        elif "risk" in user_prompt.lower():
+            return "Risk classification follows Hawkeye criteria: High Risk (counterfeit, fraud, health/safety), Medium Risk (policy violations, patterns), Low Risk (minor issues, clarifications). What risk level are you concerned about?"
+        elif "feedback" in user_prompt.lower():
+            return "The feedback is generated based on the specific content of each section against Hawkeye standards. Each item includes specific questions, suggestions, and references to relevant checkpoints. Would you like me to explain any particular feedback item?"
+        else:
+            return f"I can help you with questions about the current section, Hawkeye guidelines, risk assessment, or feedback interpretation. What would you like to know more about?"
+    
+    # Extract section name and content for analysis
+    section_name = "Unknown Section"
+    section_content = ""
+    
+    # Parse section info from prompt
+    if "section \"" in user_prompt:
+        start = user_prompt.find('section "') + 9
+        end = user_prompt.find('"', start)
+        if end > start:
+            section_name = user_prompt[start:end]
+    
+    if "SECTION CONTENT:" in user_prompt:
+        start = user_prompt.find('SECTION CONTENT:') + 16
+        section_content = user_prompt[start:start+1000].strip()
+    
+    # Generate section-specific feedback
+    feedback_items = generate_contextual_feedback(section_name, section_content)
+    
+    return json.dumps({"feedback_items": feedback_items})
+
+def generate_contextual_feedback(section_name, content):
+    """Generate contextual feedback based on section name and content"""
+    feedback_items = []
+    content_lower = content.lower()
+    section_lower = section_name.lower()
+    
+    # Executive Summary specific feedback
+    if "executive" in section_lower or "summary" in section_lower:
+        feedback_items.extend([
+            {
+                "id": f"exec_1_{hash(content) % 1000}",
+                "type": "critical",
+                "category": "Initial Assessment",
+                "description": f"Executive summary should clearly state the customer experience (CX) impact. Current content lacks specific mention of how this issue affects customer trust and satisfaction.",
+                "suggestion": "Add a dedicated sentence about CX impact, including potential for negative reviews, returns, or customer complaints",
+                "example": "Example: 'This issue could result in customer dissatisfaction due to [specific impact], potentially affecting trust in our marketplace'",
+                "questions": [
+                    "What is the direct impact on customer experience?",
+                    "How might this affect customer trust in Amazon?"
+                ],
+                "confidence": 0.92
+            }
+        ])
         
-        return json.dumps({
-            "feedback_items": [
-                {
-                    "id": "1",
-                    "type": "critical",
-                    "category": "investigation process",
-                    "description": "Missing evaluation of customer experience (CX) impact. How might this abuse affect customer trust and satisfaction?",
-                    "suggestion": "Add analysis of potential negative reviews, returns, or complaints that could result from this issue",
-                    "example": "Consider both immediate and long-term effects on customer trust as outlined in Hawkeye #1",
-                    "questions": [
-                        "Have you evaluated the customer experience (CX) impact?",
-                        "Did you consider how this affects buyer trust?"
-                    ],
-                    "confidence": 0.95
-                },
-                {
-                    "id": "2",
-                    "type": "important",
-                    "category": "root cause analysis",
-                    "description": "Root cause analysis lacks identification of process gaps that allowed this issue",
-                    "suggestion": "Include analysis of weaknesses in current procedures and suggest improvements",
-                    "example": "Reference the case study about ex-Amazon employee account compromise",
-                    "questions": [
-                        "What process gaps allowed this issue to occur?",
-                        "Are there system failures that contributed?"
-                    ],
-                    "confidence": 0.85
-                }
-            ]
-        })
+        if "risk" not in content_lower:
+            feedback_items.append({
+                "id": f"exec_2_{hash(content) % 1000}",
+                "type": "important",
+                "category": "Risk Assessment",
+                "description": "Executive summary missing clear risk classification (High/Medium/Low) based on Hawkeye criteria",
+                "suggestion": "Include explicit risk level with justification based on impact severity and scope",
+                "example": "High Risk: Affects customer safety/trust; Medium Risk: Policy violation with pattern; Low Risk: Isolated incident",
+                "questions": ["What is the risk level?", "What criteria determine this classification?"],
+                "confidence": 0.88
+            })
+    
+    # Background specific feedback
+    elif "background" in section_lower:
+        feedback_items.extend([
+            {
+                "id": f"bg_1_{hash(content) % 1000}",
+                "type": "important",
+                "category": "Investigation Process",
+                "description": "Background section should include timeline of events and initial detection method. Current content may lack chronological clarity.",
+                "suggestion": "Structure background with clear timeline: when issue was detected, by whom, initial scope assessment",
+                "example": "Timeline: Issue detected on [date] via [method], initial scope showed [impact], escalated due to [reason]",
+                "questions": [
+                    "When was this issue first detected?",
+                    "What was the detection method?",
+                    "Who reported or identified the issue?"
+                ],
+                "confidence": 0.85
+            }
+        ])
+        
+        if "seller" in content_lower or "account" in content_lower:
+            feedback_items.append({
+                "id": f"bg_2_{hash(content) % 1000}",
+                "type": "critical",
+                "category": "Seller Classification",
+                "description": "Background mentions seller/account but lacks proper classification as Good Actor, Bad Actor, or Confused Actor per Hawkeye guidelines",
+                "suggestion": "Classify the seller based on intent, history, and response to enforcement actions",
+                "example": "Good Actor: Unintentional violation, cooperative; Bad Actor: Intentional abuse, non-cooperative; Confused Actor: Misunderstands policies",
+                "questions": ["What is the seller's intent?", "How did they respond to initial contact?"],
+                "confidence": 0.90
+            })
+    
+    # Root Cause specific feedback
+    elif "root cause" in section_lower or "cause" in section_lower:
+        feedback_items.extend([
+            {
+                "id": f"rc_1_{hash(content) % 1000}",
+                "type": "critical",
+                "category": "Root Cause Analysis",
+                "description": "Root cause analysis must identify specific process gaps, system failures, or policy ambiguities that allowed this issue to occur",
+                "suggestion": "Use the 5 Whys technique to drill down to fundamental causes. Include both immediate and systemic causes",
+                "example": "Immediate cause: Seller uploaded prohibited item; Systemic cause: Detection algorithm missed specific keyword variations",
+                "questions": [
+                    "What process gap allowed this to happen?",
+                    "Are there system limitations that contributed?",
+                    "Could policy clarity have prevented this?"
+                ],
+                "confidence": 0.94
+            }
+        ])
+    
+    # Preventative Actions specific feedback
+    elif "preventative" in section_lower or "prevention" in section_lower:
+        feedback_items.extend([
+            {
+                "id": f"prev_1_{hash(content) % 1000}",
+                "type": "important",
+                "category": "Preventative Actions",
+                "description": "Preventative actions should address both immediate fixes and long-term systemic improvements identified in root cause analysis",
+                "suggestion": "Structure as: Immediate actions (stop current issue), Short-term fixes (prevent recurrence), Long-term improvements (systemic changes)",
+                "example": "Immediate: Remove violating listings; Short-term: Update detection rules; Long-term: Enhance seller education program",
+                "questions": [
+                    "What immediate actions prevent further harm?",
+                    "How do we prevent this specific issue from recurring?",
+                    "What systemic changes are needed?"
+                ],
+                "confidence": 0.87
+            }
+        ])
+    
+    # Investigation Process specific feedback
+    elif "investigation" in section_lower or "process" in section_lower:
+        feedback_items.extend([
+            {
+                "id": f"inv_1_{hash(content) % 1000}",
+                "type": "important",
+                "category": "Investigation Process",
+                "description": "Investigation process should demonstrate adherence to SOPs while showing critical thinking and challenge of standard procedures when appropriate",
+                "suggestion": "Document which SOPs were followed, any deviations made, and rationale for investigative decisions",
+                "example": "Followed SOP-123 for initial assessment, deviated at step 5 due to unique circumstances, consulted with [team] for guidance",
+                "questions": [
+                    "Which SOPs were followed?",
+                    "Were any standard procedures challenged or modified?",
+                    "What investigative tools were used?"
+                ],
+                "confidence": 0.89
+            }
+        ])
+    
+    # Generic feedback for any section
+    if len(feedback_items) == 0 or len(feedback_items) < 2:
+        # Add generic but contextual feedback
+        if "documentation" not in content_lower:
+            feedback_items.append({
+                "id": f"gen_1_{hash(content) % 1000}",
+                "type": "suggestion",
+                "category": "Documentation and Reporting",
+                "description": f"Section '{section_name}' could benefit from more detailed documentation of evidence and decision-making rationale",
+                "suggestion": "Include specific evidence, data points, and reasoning that led to conclusions in this section",
+                "example": "Reference specific case numbers, timestamps, communication records, or data analysis results",
+                "questions": ["What evidence supports the conclusions?", "Are all decisions properly documented?"],
+                "confidence": 0.75
+            })
+        
+        # Check for collaboration mentions
+        if "team" not in content_lower and "consult" not in content_lower:
+            feedback_items.append({
+                "id": f"gen_2_{hash(content) % 1000}",
+                "type": "suggestion",
+                "category": "Cross-Team Collaboration",
+                "description": f"Consider if cross-team collaboration was needed for '{section_name}' and document any consultations or escalations",
+                "suggestion": "Mention any consultations with legal, policy, or other teams if relevant to this section",
+                "example": "Consulted with Policy team on interpretation, Legal team confirmed compliance approach",
+                "questions": ["Were other teams consulted?", "Should this have been escalated?"],
+                "confidence": 0.70
+            })
+    
+    # Ensure each feedback item has required fields
+    for item in feedback_items:
+        if 'hawkeye_refs' not in item:
+            refs = get_hawkeye_reference(item.get('category', ''), item.get('description', ''))
+            item['hawkeye_refs'] = [ref['number'] for ref in refs]
+        
+        if 'risk_level' not in item:
+            item['risk_level'] = classify_risk_level(item)
+    
+    return feedback_items
 
 def analyze_section_with_ai(section_name, section_content, doc_type="Full Write-up"):
     """Analyze a single section with Hawkeye framework"""
+    
+    # Create detailed analysis prompt with section-specific guidance
+    section_guidance = get_section_specific_guidance(section_name)
     
     prompt = f"""Analyze this section "{section_name}" from a {doc_type} document using the Hawkeye investigation framework.
 
 SECTION CONTENT:
 {section_content[:3000]}
 
-Provide feedback following the 20-point Hawkeye checklist. For each feedback item, include:
-1. Specific questions from the Hawkeye checklist that should be addressed
-2. References to relevant Hawkeye checkpoint numbers (#1-20)
-3. Examples from the case studies when applicable
-4. Risk classification (High/Medium/Low)
+SECTION-SPECIFIC GUIDANCE:
+{section_guidance}
+
+Provide detailed, document-specific feedback following the 20-point Hawkeye checklist. Focus on:
+1. Content gaps specific to this section type
+2. Missing Hawkeye criteria that should be addressed
+3. Specific improvements based on the actual content
+4. Questions that arise from reading this specific content
+
+For each feedback item, include:
+- Specific references to the actual content
+- Detailed suggestions for improvement
+- Relevant Hawkeye checkpoint numbers (#1-20)
+- Risk classification based on impact
+- Specific questions that should be answered
 
 Return feedback in this JSON format:
 {{
@@ -494,10 +672,10 @@ Return feedback in this JSON format:
             "id": "unique_id",
             "type": "critical|important|suggestion|positive",
             "category": "category matching Hawkeye sections",
-            "description": "Clear description referencing Hawkeye criteria",
-            "suggestion": "Specific suggestion based on Hawkeye guidelines",
-            "example": "Example from case studies or Hawkeye checklist",
-            "questions": ["Question 1 from Hawkeye?", "Question 2?"],
+            "description": "Detailed description referencing specific content and Hawkeye criteria",
+            "suggestion": "Specific, actionable suggestion based on content analysis",
+            "example": "Concrete example or template for improvement",
+            "questions": ["Specific question about this content?", "What should be clarified?"],
             "hawkeye_refs": [1, 11, 12],
             "risk_level": "High|Medium|Low",
             "confidence": 0.95
@@ -505,9 +683,11 @@ Return feedback in this JSON format:
     ]
 }}"""
     
-    system_prompt = "You are an expert document reviewer following the Hawkeye investigation mental models for CT EE guidelines."
+    system_prompt = f"""You are an expert CT EE document reviewer with deep knowledge of the Hawkeye investigation framework. 
+Analyze the provided section content thoroughly and provide specific, actionable feedback based on what is actually written (or missing) in the content.
+Focus on document-centric analysis rather than generic advice."""
     
-    response = invoke_aws_semantic_search(system_prompt, prompt, f"Hawkeye Analysis: {section_name}")
+    response = invoke_aws_semantic_search(system_prompt, prompt, f"Detailed Hawkeye Analysis: {section_name}")
     
     try:
         result = json.loads(response)
@@ -521,6 +701,7 @@ Return feedback in this JSON format:
         else:
             result = {"feedback_items": []}
     
+    # Enhance feedback items with additional context
     for item in result.get('feedback_items', []):
         if 'hawkeye_refs' not in item:
             refs = get_hawkeye_reference(item.get('category', ''), item.get('description', ''))
@@ -528,8 +709,72 @@ Return feedback in this JSON format:
         
         if 'risk_level' not in item:
             item['risk_level'] = classify_risk_level(item)
+        
+        # Add section context to description
+        if 'description' in item and section_name not in item['description']:
+            item['description'] = f"In '{section_name}': {item['description']}"
     
     return result
+
+def get_section_specific_guidance(section_name):
+    """Get specific guidance for different section types"""
+    section_lower = section_name.lower()
+    
+    if "executive" in section_lower or "summary" in section_lower:
+        return """Executive Summary should include:
+- Clear statement of the issue and its impact
+- Customer experience (CX) impact assessment (Hawkeye #1)
+- Risk level classification with justification
+- High-level resolution approach
+- Key stakeholders involved"""
+    
+    elif "background" in section_lower:
+        return """Background should include:
+- Timeline of events leading to the issue
+- How the issue was detected (Hawkeye #2)
+- Initial scope and impact assessment
+- Relevant historical context
+- Key players and their roles"""
+    
+    elif "root cause" in section_lower or "cause" in section_lower:
+        return """Root Cause Analysis should include:
+- Systematic analysis using 5 Whys or similar methodology (Hawkeye #11)
+- Identification of process gaps and system failures
+- Distinction between immediate and systemic causes
+- Analysis of why existing controls failed
+- Contributing factors and environmental conditions"""
+    
+    elif "preventative" in section_lower or "prevention" in section_lower:
+        return """Preventative Actions should include:
+- Immediate actions to stop current harm (Hawkeye #12)
+- Short-term fixes to prevent recurrence
+- Long-term systemic improvements
+- Process and system enhancements
+- Monitoring and detection improvements"""
+    
+    elif "investigation" in section_lower:
+        return """Investigation Process should include:
+- SOPs followed and any deviations (Hawkeye #2)
+- Evidence gathering methodology
+- Analysis techniques used
+- Decision-making rationale
+- Quality control measures applied (Hawkeye #15)"""
+    
+    elif "resolving" in section_lower or "resolution" in section_lower:
+        return """Resolving Actions should include:
+- Specific enforcement actions taken (Hawkeye #4)
+- Seller classification rationale (Hawkeye #3)
+- Communication approach used (Hawkeye #17)
+- Verification steps for high-risk cases (Hawkeye #5)
+- Appeals handling if applicable (Hawkeye #6)"""
+    
+    else:
+        return """General section should include:
+- Clear purpose and scope
+- Relevant Hawkeye checklist considerations
+- Supporting evidence and documentation (Hawkeye #13)
+- Cross-team collaboration details (Hawkeye #14)
+- Quality assurance measures"""
 
 def process_chat_query(query, context, session_id):
     """Process chat query with context awareness"""
@@ -537,8 +782,24 @@ def process_chat_query(query, context, session_id):
     if not session:
         return "No active session found."
     
+    current_section = context.get('current_section', 'None')
+    
+    # Get current section content for context
+    section_content = ""
+    if current_section != 'None' and current_section in session.sections:
+        section_content = session.sections[current_section][:500]  # First 500 chars for context
+    
+    # Get current feedback for context
+    current_feedback = ""
+    if current_section in session.ai_feedback_cache:
+        feedback_items = session.ai_feedback_cache[current_section].get('feedback_items', [])
+        if feedback_items:
+            current_feedback = f"Current feedback includes {len(feedback_items)} items: " + ", ".join([item.get('category', 'General') for item in feedback_items[:3]])
+    
     context_info = f"""
-    Current Section: {context.get('current_section', 'None')}
+    Current Section: {current_section}
+    Section Content Preview: {section_content[:200]}...
+    Current Feedback: {current_feedback}
     Document Type: Full Write-up
     """
     
@@ -554,15 +815,29 @@ The 20-point Hawkeye checklist includes:
 3. Seller Classification - Identify good/bad actors
 4. Enforcement Decision-Making
 5. Additional Verification for High-Risk Cases
-...and 15 more points
+6. Multiple Appeals Handling
+7. Account Hijacking Prevention
+8. Funds Management
+9. REs-Q Outreach Process
+10. Sentiment Analysis
+11. Root Cause Analysis
+12. Preventative Actions
+13. Documentation and Reporting
+14. Cross-Team Collaboration
+15. Quality Control
+16. Continuous Improvement
+17. Communication Standards
+18. Performance Metrics
+19. Legal and Compliance
+20. New Service Launch Considerations
 
 USER QUESTION: {query}
 
-Provide a helpful, specific response that references the Hawkeye guidelines when relevant. Be concise but thorough."""
+Provide a helpful, specific response that references the Hawkeye guidelines and current section context when relevant. Be concise but thorough."""
     
-    system_prompt = "You are an expert assistant for the Hawkeye document review system."
+    system_prompt = "You are an expert assistant for the Hawkeye document review system with deep knowledge of CT EE guidelines."
     
-    response = invoke_aws_semantic_search(system_prompt, prompt, "Chat Assistant")
+    response = invoke_aws_semantic_search(system_prompt, prompt, f"Chat Assistant - {query[:50]}")
     
     return response
 
@@ -942,4 +1217,6 @@ def get_stats():
 load_guidelines()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)

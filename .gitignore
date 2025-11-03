@@ -1,44 +1,29 @@
-# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
-venv/
 env/
-ENV/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Application specific
-uploads/
-outputs/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-
-# OS
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
 .DS_Store
-Thumbs.db
-
-# Environment variables
-.env
+uploads/*
+outputs/*
+temp_*
+*.docx
+!CT_EE_Review_Guidelines.docx
+!Hawkeye_checklist.docx
