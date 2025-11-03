@@ -35,10 +35,25 @@ chmod +x ec2-setup.sh
 
 **Files used:** `ec2-setup.sh`
 
+## AWS App Runner Deployment
+
+### Option 1: Using AWS Console
+1. Go to AWS App Runner console
+2. Create service from source code
+3. Connect to GitHub repository: `https://github.com/ABS-IISC/CT_TOOL`
+4. App Runner will auto-detect `apprunner.yaml` configuration
+
+### Option 2: Using AWS CLI
+```bash
+./deploy-apprunner.sh
+```
+
+**Files used:** `apprunner.yaml`, `deploy-apprunner.sh`, `apprunner-service.json`
+
 ## Environment Variables
 
 Set these for production deployments:
-- `PORT`: Application port (auto-detected for Railway)
+- `PORT`: Application port (auto-detected for Railway/App Runner)
 - `FLASK_ENV`: Set to 'production'
 - `AWS_ACCESS_KEY_ID`: For AWS Bedrock (optional)
 - `AWS_SECRET_ACCESS_KEY`: For AWS Bedrock (optional)

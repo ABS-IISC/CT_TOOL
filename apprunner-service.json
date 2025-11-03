@@ -1,0 +1,28 @@
+{
+  "ServiceName": "ct-review-tool",
+  "SourceConfiguration": {
+    "AutoDeploymentsEnabled": true,
+    "CodeRepository": {
+      "RepositoryUrl": "https://github.com/ABS-IISC/CT_TOOL",
+      "SourceCodeVersion": {
+        "Type": "BRANCH",
+        "Value": "main"
+      },
+      "CodeConfiguration": {
+        "ConfigurationSource": "REPOSITORY",
+        "CodeConfigurationValues": {
+          "Runtime": "PYTHON_3",
+          "BuildCommand": "pip install -r requirements.txt && mkdir -p uploads outputs",
+          "StartCommand": "python run.py production",
+          "RuntimeEnvironmentVariables": {
+            "PORT": "5000"
+          }
+        }
+      }
+    }
+  },
+  "InstanceConfiguration": {
+    "Cpu": "0.25 vCPU",
+    "Memory": "0.5 GB"
+  }
+}
